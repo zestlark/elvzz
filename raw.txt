@@ -1,0 +1,143 @@
+<?php
+// URL to scrape
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $url = $_GET['url'];
+
+    $url0 = $url . '/download/0';
+    echo $url0;
+
+    // Get the HTML content of the URL
+    $html = file_get_contents($url0);
+
+    // Extract the download button
+    $downloadButtonPattern = '/<div class="wp-block-button has-custom-width wp-block-button__width-100">\s*<a id="download-button" href="([^"]+)" class="wp-block-button__link has-vivid-cyan-blue-background-color clickable"><span class="material-symbols-rounded notranslate">download<\/span> Download \(([\d.]+ [A-Z]+)\)<\/a>\s*<\/div>/i';
+    if (preg_match($downloadButtonPattern, $html, $downloadButtonMatches)) {
+        $downloadUrl = $downloadButtonMatches[1];
+        $downloadSize = $downloadButtonMatches[2];
+
+        echo "Download URL: $downloadUrl" . PHP_EOL;
+        echo "Download Size: $downloadSize" . PHP_EOL;
+    }
+
+    // Extract the image URL
+    $imagePattern = '/<figure class="wp-block-image">\s*<img [^>]*src="([^"]+)"[^>]*>\s*<\/figure>/i';
+    if (preg_match($imagePattern, $html, $imageMatches)) {
+        $imageUrl = $imageMatches[1];
+
+        echo "Image URL: $imageUrl" . PHP_EOL;
+    }
+
+    // Extract the download name
+    $downloadNamePattern = '/<div class="entry-content"><h1 class="has-medium-font-size has-text-align-center no-margin">Download ([^<]+)<\/h1><span class="has-text-align-center has-small-font-size has-cyan-bluish-gray-color margin-bottom-15 truncate">([^<]+)<\/span><\/div>/i';
+    if (preg_match($downloadNamePattern, $html, $downloadNameMatches)) {
+        $downloadTitle = $downloadNameMatches[1];
+        $downloadFilename = $downloadNameMatches[2];
+
+        echo "Download Title: $downloadTitle" . PHP_EOL;
+        echo "Download Filename: $downloadFilename" . PHP_EOL;
+    }
+
+    echo $url . '<br/>hi<br/>';
+
+    $url1 = $url;
+
+    // Get the HTML content of the URL
+    $html2 = file_get_contents($url1);
+
+    // Extract the image URL
+    $imagePatternarray = '/<div class="screenshots beauty-scroll".*?<img[^>]*src="([^"]+)"/si';
+    if (preg_match($imagePattern, $html, $imageMatches)) {
+        $imageUrl = $imageMatches[1];
+
+        echo "Image URL: $imageUrl" . PHP_EOL;
+        echo '<img src="' . $imageUrl . '"/>';
+    }
+
+    // Extract basic information from the tables
+    $tablePattern = '/<table[^>]*>.*?<tbody>(.*?)<\/tbody>.*?<\/table>/si';
+    if (preg_match($tablePattern, $html, $tableMatches)) {
+        $tableContent = $tableMatches[1];
+
+        $infoPattern = '/<th[^>]*>(.*?)<\/th>.*?<td[^>]*>(.*?)<\/td>/si';
+        preg_match_all($infoPattern, $tableContent, $infoMatches, PREG_SET_ORDER);
+
+        foreach ($infoMatches as $match) {
+            $label = strip_tags($match[1]);
+            $value = strip_tags($match[2]);
+            echo "$label: $value" . PHP_EOL;
+        }
+    }
+}
+?>
+<?php
+
+// Fetch the HTML content
+$html = file_get_contents($url);
+
+// Create a DOMDocument object
+$dom = new DOMDocument();
+libxml_use_internal_errors(true); // Disable libxml errors and warnings
+$dom->loadHTML($html);
+libxml_clear_errors();
+
+// Create a DOMXPath object
+$xpath = new DOMXPath($dom);
+
+// Get the image URL within <figure class="wp-block-image">
+$imageElement = $xpath->query('//figure[@class="wp-block-image"]/img');
+$imageUrl = "";
+if ($imageElement->length > 0) {
+    $imageUrl = $imageElement->item(0)->getAttribute('src');
+}
+
+// Get the icon image URL within <div class="app-icon">
+$iconElement = $xpath->query('//div[@class="app-icon"]/img');
+$iconUrl = "";
+if ($iconElement->length > 0) {
+    $iconUrl = $iconElement->item(0)->getAttribute('src');
+}
+
+// Get the data from the table
+$tableElement = $xpath->query('//figure[@class="wp-block-table"]/table');
+
+if ($tableElement->length > 0) {
+    $rows = $tableElement->item(0)->getElementsByTagName('tr');
+    $data = array();
+
+    foreach ($rows as $row) {
+        $header = $row->getElementsByTagName('th')->item(0);
+        $value = $row->getElementsByTagName('td')->item(0);
+
+        if ($header && $value) {
+            $headerText = $header->textContent;
+            $valueText = $value->textContent;
+            $data[$headerText] = $valueText;
+        }
+    }
+
+    // Output the fetched data
+    foreach ($data as $header => $value) {
+        echo $header . ": " . $value . "\n";
+    }
+} else {
+    echo "No table element found.";
+}
+
+
+// Get the screenshot images
+$screenshotElements = $xpath->query('//div[@class="screenshots beauty-scroll"]/a/img');
+$screenshots = array();
+foreach ($screenshotElements as $element) {
+    $screenshotUrl = $element->getAttribute('src');
+    $screenshots[] = $screenshotUrl;
+}
+
+// Output the fetched data
+echo "Image URL: " . $imageUrl . "\n";
+echo "Icon URL: " . $iconUrl . "\n";
+echo "Data:\n";
+
+echo "Screenshots:\n";
+print_r($screenshots);
+?>
